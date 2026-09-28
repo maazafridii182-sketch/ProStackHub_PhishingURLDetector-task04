@@ -13,7 +13,8 @@ def load_model():
 
 model = load_model()
 
-st.title("🛡️ Cyber Security Phishing URL Detector")
+st.title("🛡️ Cyber Security Phishing URL Detector") 
+st.caption("Built by Maaz Afridi")
 st.write("Analyze any website link in real-time to detect potential security threats.")
 
 # User Input
