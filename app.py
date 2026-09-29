@@ -6,22 +6,18 @@ from extractor import extract_features
 # Page Config
 st.set_page_config(page_title="Phishing URL Detector", page_icon="🛡️", layout="centered")
 
-# Load model (cache so it doesn't reload every time)
+# Load model
 @st.cache_resource
 def load_model():
     return joblib.load('phishing_model.pkl')
 
 model = load_model()
 
-st.title("🛡️ Cyber Security Phishing URL Detector") 
+st.title("🛡️ Cyber Security Phishing URL Detector")
 st.markdown("""
-    <h3 style='text-align: center; 
-               color: #FF4B4B; 
-               font-weight: 800; 
-               margin-top: -10px;
-               text-shadow: 1px 1px 2px rgba(0,0,0,0.1);'>
+    <h4 style='text-align: center; color: #1E90FF; font-weight: bold; margin-top: -15px;'>
         Built by Maaz Afridi
-    </h3>
+    </h4>
 """, unsafe_allow_html=True)
 st.write("Analyze any website link in real-time to detect potential security threats.")
 
@@ -30,16 +26,22 @@ url_input = st.text_input("Paste URL here to analyze:", placeholder="https://exa
 
 # Analyze Button
 if st.button("Analyze Link", type="primary"):
-    if not url_input.strip():
-        st.warning("⚠️ Please enter a valid URL.")
+    url = url_input.strip()
+
+    # Check 1: Empty input
+    if not url:
+        st.warning("⚠️ Please enter a URL.")
+
+    # Check 2: Invalid / random text
+    elif " " in url or "." not in url:
+        st.error("❌ Invalid URL. Please enter a proper website link (example: https://google.com)")
+
+    # Check 3: Valid looking URL → run model
     else:
-        # Extract features
-        feats = extract_features(url_input)
+        feats = extract_features(url)
         df_feats = pd.DataFrame([feats])
 
-        # Prediction
         prediction = model.predict(df_feats)[0]
-        # Probability (confidence)
         proba = model.predict_proba(df_feats)[0]
         confidence = proba[1] * 100 if prediction == 1 else proba[0] * 100
 
@@ -56,42 +58,35 @@ if st.button("Analyze Link", type="primary"):
 
         reasons = []
 
-        # HTTPS Check
         if feats['has_https'] == 0:
             reasons.append("❌ Missing HTTPS protocol (Unencrypted connection)")
         else:
             reasons.append("✅ Secure HTTPS protocol active")
 
-        # IP Address Check
         if feats['having_ip'] == 1:
             reasons.append("❌ Direct IP Address used instead of domain name")
         else:
             reasons.append("✅ Domain name used (No IP address)")
 
-        # @ Symbol Check
         if feats['having_at_symbol'] == 1:
             reasons.append("❌ Contains '@' symbol (used for URL redirection tricks)")
         else:
             reasons.append("✅ No '@' symbol found")
 
-        # URL Length
         if feats['url_length'] > 50:
             reasons.append(f"❌ Suspicious URL length ({feats['url_length']} characters)")
         else:
             reasons.append(f"✅ Normal URL length ({feats['url_length']} characters)")
 
-        # Subdomain Count
         if feats['subdomain_count'] > 1:
             reasons.append(f"❌ Multiple subdomains detected ({feats['subdomain_count']} subdomains)")
         else:
             reasons.append(f"✅ Normal subdomain structure ({feats['subdomain_count']} subdomains)")
 
-        # Hyphen in Domain
         if feats['prefix_suffix'] == 1:
             reasons.append("❌ Domain contains hyphen '-' (Common in deceptive brand domains)")
         else:
             reasons.append("✅ No hyphen in domain name")
 
-        # Show all reasons
         for item in reasons:
             st.write(item)
